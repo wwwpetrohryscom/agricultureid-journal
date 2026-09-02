@@ -59,7 +59,7 @@ including ours.
 
 ## Not applicable
 
-The subject does not arise here for a stated structural reason — and the reason
+The subject does not arise here for a stated, recorded structural reason — and the reason
 is recorded, so the label cannot be used as a quiet synonym for "we gave up".
 
 ## Why not just one word
