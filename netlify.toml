@@ -1,10 +1,73 @@
-# TEMPORARY DIAGNOSTIC BUILD — reverted in the next commit.
-# Netlify's build log is not retrievable through the API for this account, so
-# the build publishes its own log and always exits 0.
+# Netlify configuration for AgricultureID Journal.
+#
+# This is the SECOND of two Netlify projects serving one public hostname. The
+# main AgricultureID project owns agricultureid.com and forwards /journal/* here
+# with a proxy rewrite; this project serves those requests and nothing else. The
+# mechanism, the alternatives examined and the evidence are recorded in the main
+# repository at docs/journal-routing-architecture.md.
+#
+# The *.netlify.app hostname this project deploys to is INFRASTRUCTURE. It is
+# never the Journal's public identity, it never appears in rendered output, and
+# `npm run validate:seo` fails the build if it ever does.
+
 [build]
-  command = "mkdir -p diag && (npm run build 2>&1 | tee diag/build.txt) ; echo exit_code=${PIPESTATUS[0]} >> diag/build.txt ; node -e \"console.log('node',process.version)\" >> diag/build.txt ; ls node_modules/.bin | head -40 >> diag/build.txt ; true"
-  publish = "diag"
+  command = "npm run build"
+  # `publish` is ".next" and must stay set alongside the plugin declaration
+  # below. The two are a pair on a project created through the API:
+  #
+  #   plugin declared, publish unset  → the build fails, exit code 2
+  #   plugin absent, publish ".next"  → the build succeeds and Netlify serves
+  #                                     the directory as static files: green
+  #                                     deploy, 404 on every route
+  #   plugin declared, publish ".next" → the adapter runs
+  #
+  # This matches the sibling publication project on this team exactly.
+  publish = ".next"
+
+# The Next.js runtime, installed as a dependency AND declared here.
+#
+# Both halves are required, and the reason is that this project was created
+# through the Netlify API rather than the UI. A repository connected through the
+# UI gets the Next.js build integration enabled on the site; one created through
+# the API does not, and Netlify then treats a Next.js build as a plain static
+# publish. The deploy goes green, files upload, and every route returns
+# Netlify's own 404.
+#
+# The tell is in the deploy summary. A working Next.js deploy on this team
+# reports redirect rules, a header rule and a function. The broken ones reported
+# "No redirect rules processed", "No header rules processed" and "No functions
+# deployed" — the adapter had not run at all.
+#
+# Declaring the plugin here WITHOUT adding it to package.json fails the build
+# outright, so both are needed. This is what the sibling publication project on
+# this team does.
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
 [build.environment]
+  # 22, matching the sibling publication project on this team rather than the
+  # knowledge platform's 20. next.config.mjs uses `import.meta.dirname`, which
+  # is undefined before Node 20.11 — pinning a major version alone does not
+  # guarantee a patch level that has it.
   NODE_VERSION = "22"
   NPM_FLAGS = "--no-audit --no-fund"
+
+# --- De-indexing non-production contexts ------------------------------------
+#
+# X-Robots-Tag is scoped to preview and branch contexts and MUST NOT be applied
+# to production. A proxy forwards the origin's response headers to the visitor:
+# a blanket noindex on this project's production responses would travel through
+# the rewrite and de-index the real agricultureid.com/journal URLs. app/robots.ts
+# handles the production case by serving Disallow: / when the request is not
+# reaching us through the canonical host.
+
+[[context.deploy-preview.headers]]
+  for = "/*"
+  [context.deploy-preview.headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
+[[context.branch-deploy.headers]]
+  for = "/*"
+  [context.branch-deploy.headers.values]
+    X-Robots-Tag = "noindex, nofollow"
