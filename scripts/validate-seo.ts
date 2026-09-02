@@ -80,6 +80,12 @@ for (const f of html) {
   // bug. The invariant lives where it is exact, as a test on buildMetadata's
   // contract in tests/metadata.test.ts.
 
+  // Exactly one h1. A page with none gives a screen-reader user and a crawler
+  // no top-level heading; a page with several has no single subject. The front
+  // page's is visually hidden because the masthead already shows the name.
+  const h1s = (body.match(/<h1[\s>]/g) ?? []).length;
+  if (h1s !== 1) fail(`${rel}: ${h1s} h1 elements`);
+
   const desc = body.match(
     /<meta[^>]+name="description"[^>]+content="([^"]*)"/i,
   )?.[1];

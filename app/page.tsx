@@ -38,6 +38,17 @@ export default async function JournalHome() {
     <Container className="py-8 lg:py-10">
       <JsonLd data={journalSchema()} />
 
+      {/*
+        The front page needs an h1, and the publication's name is what it is
+        about. It is visually hidden because the masthead already renders the
+        name in the header — showing it twice would be redundant to a sighted
+        reader while its absence leaves a screen-reader user, and a crawler,
+        with a page whose top-level heading is a single story.
+      */}
+      <h1 className="sr-only">
+        {SITE.name} — {SITE.tagline}
+      </h1>
+
       {lead && (
         <section aria-label="Lead story">
           <PublicationCard p={lead} variant="lead" />
