@@ -15,18 +15,25 @@
   # `publish` is deliberately unset: the Next.js runtime resolves it from the
   # build output, exactly as on the main project.
 
-# The Next.js runtime, declared explicitly.
+# The Next.js runtime is NOT declared here.
 #
-# On the main AgricultureID project this is installed by Netlify's Git
-# integration and pinning it is discouraged, so the adapter can update itself.
-# A project created through the API does NOT get it installed, and without it
-# Netlify publishes the `.next` directory as a folder of static files: the build
-# succeeds, 198 files upload, and every URL returns Netlify's own 404 because
-# nothing is serving the application. That was the first two deploys here.
+# Netlify auto-detects Next.js and applies the official runtime, and pinning the
+# plugin is discouraged so the adapter updates itself — this matches the main
+# AgricultureID project exactly.
 #
-# Declared without a version so it still updates on every build.
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+# Two things went wrong before this settled, both worth recording because
+# neither produces an obvious error:
+#
+#   1. A project created through the API starts with NO build command. Netlify
+#      published the repository as static files; the deploy said "ready" and
+#      every URL returned Netlify's own 404.
+#   2. Setting an explicit publish directory of ".next" overrides the adapter's
+#      own publish resolution, so Netlify served the build output as a folder of
+#      static files. 198 files uploaded, "No redirect rules processed", and
+#      again a 404 on every route with a green deploy.
+#
+# The publish directory must stay unset both here and in the site's build
+# settings, so the adapter resolves it.
 
 [build.environment]
   NODE_VERSION = "20"
