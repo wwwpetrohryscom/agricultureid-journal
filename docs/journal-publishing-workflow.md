@@ -88,6 +88,27 @@ A value that _starts_ with a quote character must be quoted as a whole. Both
 cases are caught by `validate:journal` naming the file, rather than by the build
 with a React error that names nothing.
 
+## Telling search engines about a new publication
+
+IndexNow keys are validated at the **host** root, and the Journal shares a host
+with the knowledge platform. The existing key file at
+`https://agricultureid.com/8f700117e33b46399992b313b729d2ce.txt` therefore
+already authorises submissions for `https://agricultureid.com/journal/...` — no
+second key, no key file in this repository, and nothing to add to the main
+project.
+
+That is a property of the path-based architecture. A Journal on
+`journal.agricultureid.com` would have been a different host and would have
+needed its own key file, served by this deployment, with its own rotation.
+
+Submit only canonical `agricultureid.com/journal/...` URLs. Never the
+`*.netlify.app` origin — it is not a host any search engine should be told
+about, and the key would not validate for it in any case.
+
+Submission is a deliberate step taken after a publication is live. Nothing here
+submits automatically, and nothing in this repository rebuilds the main project
+to do it.
+
 ## What is deliberately not automated
 
 There is no crawler, no scheduled generation, and no path from a feed to a
