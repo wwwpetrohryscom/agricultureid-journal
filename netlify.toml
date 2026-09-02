@@ -15,6 +15,19 @@
   # `publish` is deliberately unset: the Next.js runtime resolves it from the
   # build output, exactly as on the main project.
 
+# The Next.js runtime, declared explicitly.
+#
+# On the main AgricultureID project this is installed by Netlify's Git
+# integration and pinning it is discouraged, so the adapter can update itself.
+# A project created through the API does NOT get it installed, and without it
+# Netlify publishes the `.next` directory as a folder of static files: the build
+# succeeds, 198 files upload, and every URL returns Netlify's own 404 because
+# nothing is serving the application. That was the first two deploys here.
+#
+# Declared without a version so it still updates on every build.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
 [build.environment]
   NODE_VERSION = "20"
   NPM_FLAGS = "--no-audit --no-fund"
