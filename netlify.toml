@@ -15,25 +15,26 @@
   # `publish` is deliberately unset: the Next.js runtime resolves it from the
   # build output, exactly as on the main project.
 
-# The Next.js runtime is NOT declared here.
+# The Next.js runtime, installed as a dependency AND declared here.
 #
-# Netlify auto-detects Next.js and applies the official runtime, and pinning the
-# plugin is discouraged so the adapter updates itself — this matches the main
-# AgricultureID project exactly.
+# Both halves are required, and the reason is that this project was created
+# through the Netlify API rather than the UI. A repository connected through the
+# UI gets the Next.js build integration enabled on the site; one created through
+# the API does not, and Netlify then treats a Next.js build as a plain static
+# publish. The deploy goes green, files upload, and every route returns
+# Netlify's own 404.
 #
-# Two things went wrong before this settled, both worth recording because
-# neither produces an obvious error:
+# The tell is in the deploy summary. A working Next.js deploy on this team
+# reports redirect rules, a header rule and a function. The broken ones reported
+# "No redirect rules processed", "No header rules processed" and "No functions
+# deployed" — the adapter had not run at all.
 #
-#   1. A project created through the API starts with NO build command. Netlify
-#      published the repository as static files; the deploy said "ready" and
-#      every URL returned Netlify's own 404.
-#   2. Setting an explicit publish directory of ".next" overrides the adapter's
-#      own publish resolution, so Netlify served the build output as a folder of
-#      static files. 198 files uploaded, "No redirect rules processed", and
-#      again a 404 on every route with a green deploy.
-#
-# The publish directory must stay unset both here and in the site's build
-# settings, so the adapter resolves it.
+# Declaring the plugin here WITHOUT adding it to package.json fails the build
+# outright, so both are needed. This is what the sibling publication project on
+# this team does.
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
 [build.environment]
   NODE_VERSION = "20"
