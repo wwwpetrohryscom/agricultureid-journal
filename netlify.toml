@@ -37,7 +37,11 @@
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
-  NODE_VERSION = "20"
+  # 22, matching the sibling publication project on this team rather than the
+  # knowledge platform's 20. next.config.mjs uses `import.meta.dirname`, which
+  # is undefined before Node 20.11 — pinning a major version alone does not
+  # guarantee a patch level that has it.
+  NODE_VERSION = "22"
   NPM_FLAGS = "--no-audit --no-fund"
 
 # --- De-indexing non-production contexts ------------------------------------
