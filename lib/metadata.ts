@@ -28,9 +28,17 @@ export function buildMetadata({
   noindex?: boolean;
 }): Metadata {
   const url = journalUrl(path);
+  // The root layout declares `template: '%s · AgricultureID Journal'`, so a
+  // page must return its BARE title and let the template add the suffix.
+  // Building the full string here too produced "… · AgricultureID Journal ·
+  // AgricultureID Journal" on every page — invisible in development, and in
+  // every search result. The front page opts out of the template with
+  // `absolute`, because applying it there is the same bug in another hat.
+  // `fullTitle` is still the complete string, for Open Graph and Twitter, which
+  // have no template.
   const fullTitle = title === SITE.name ? title : `${title} · ${SITE.name}`;
   return {
-    title: fullTitle,
+    title: title === SITE.name ? { absolute: title } : title,
     description,
     alternates: { canonical: url },
     openGraph: {

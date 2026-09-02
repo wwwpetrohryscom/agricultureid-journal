@@ -1,0 +1,54 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Format, types, lint, editorial, tests, build, SEO, routing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Prettier format check
+        run: npm run format:check
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: ESLint
+        run: npm run lint
+
+      # Offline and fast. Runs again as `prebuild`, so a build can never ship
+      # content the editorial gate would have rejected.
+      - name: Editorial validation
+        run: npm run validate:journal
+
+      - name: Tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      # Against the built output: the infrastructure hostname must not appear
+      # anywhere, and every page must canonicalise to the public origin.
+      - name: SEO and identity validation
+        run: npm run validate:seo
+
+      # Against the built output: every internal URL must already begin with
+      # /journal, or it lands on the knowledge platform in production.
+      - name: Routing validation
+        run: npm run validate:routing

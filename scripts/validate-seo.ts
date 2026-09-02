@@ -71,7 +71,15 @@ for (const f of html) {
       fail(`${rel}: canonical "${canonical}" has a trailing slash`);
   }
 
-  if (!/<title>/i.test(body)) fail(`${rel}: no title`);
+  const title = body.match(/<title>([^<]*)<\/title>/i)?.[1];
+  if (!title?.trim()) fail(`${rel}: no title`);
+  // The title-suffix-applied-twice defect is NOT checked here. It cannot be
+  // distinguished from a legitimate headline by looking at the rendered string:
+  // an article titled "Welcome to AgricultureID Journal" produces a page title
+  // ending "AgricultureID Journal · AgricultureID Journal", and so does the
+  // bug. The invariant lives where it is exact, as a test on buildMetadata's
+  // contract in tests/metadata.test.ts.
+
   const desc = body.match(
     /<meta[^>]+name="description"[^>]+content="([^"]*)"/i,
   )?.[1];

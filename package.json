@@ -18,7 +18,7 @@
     "validate:journal": "tsx scripts/validate-journal.ts",
     "validate:seo": "tsx scripts/validate-seo.ts",
     "validate:routing": "tsx scripts/validate-routing.ts",
-    "validate": "npm run format:check && npm run typecheck && npm run lint && npm run validate:journal && npm run build && npm run validate:seo && npm run validate:routing",
+    "validate": "npm run format:check && npm run typecheck && npm run lint && npm run validate:journal && npm run test && npm run build && npm run validate:seo && npm run validate:routing",
     "test": "vitest run"
   },
   "dependencies": {
