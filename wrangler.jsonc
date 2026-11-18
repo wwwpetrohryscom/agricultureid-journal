@@ -1,0 +1,35 @@
+// Cloudflare Workers deployment for agricultureid.com/journal.
+// See docs/journal-publishing-workflow.md. Deploy from a clean build:
+//   npm run build && npx wrangler@4 deploy
+//
+// Assets only: there is no Worker script, so nothing here can proxy, rewrite
+// or render — the Worker serves the files in dist/ and nothing else.
+{
+  "name": "agricultureid-journal",
+  "account_id": "dc473bc4777ac1f776161ce969194ac1",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    // /journal/news is served from dist/journal/news.html; the trailing-slash
+    // form is redirected by dist/_redirects first (308).
+    "html_handling": "auto-trailing-slash",
+    // Unknown paths under /journal get dist/journal/404.html with a 404.
+    "not_found_handling": "404-page",
+  },
+  // These two routes are more specific than the knowledge platform's
+  // agricultureid.com/* route (agricultureid repository), so Cloudflare sends
+  // /journal and everything below it here and nothing else. /journalism is NOT
+  // matched and stays with the platform, as it did on Netlify.
+  "routes": [
+    {
+      "pattern": "agricultureid.com/journal",
+      "zone_name": "agricultureid.com",
+    },
+    {
+      "pattern": "agricultureid.com/journal/*",
+      "zone_name": "agricultureid.com",
+    },
+  ],
+  "workers_dev": true,
+  "preview_urls": false,
+}

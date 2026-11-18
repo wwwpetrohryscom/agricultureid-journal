@@ -3,10 +3,10 @@
 ## What publishing is
 
 Adding or editing one Markdown file under `content/publications/<section>/`,
-committing it, and merging to `main`. Netlify builds this project and nothing
-else. The AgricultureID knowledge platform does not rebuild, its deploy history
-is untouched, and a data gate failing over there cannot block a publication or a
-correction over here.
+committing it, merging to `main`, and deploying this project's Worker. Only the
+Journal is rebuilt. The AgricultureID knowledge platform does not rebuild, its
+deploy history is untouched, and a data gate failing over there cannot block a
+publication or a correction over here.
 
 ## Steps
 
@@ -16,8 +16,30 @@ correction over here.
    `datePublished` and `summary`; the format decides what else is required.
 3. Write the body in Markdown.
 4. `npm run validate:journal` — fast, offline, no build needed.
-5. Commit and open a pull request. Netlify builds a deploy preview.
-6. Merge. The item is live at `agricultureid.com/journal/<section>/<slug>`.
+5. Commit and open a pull request. CI runs the editorial, SEO and routing
+   gates.
+6. Merge, then deploy from an up-to-date `main`:
+
+   ```bash
+   npm ci && npm run build   # next build → out/, then cloudflare/assemble.mjs → dist/
+   npx wrangler@4 deploy     # the `agricultureid-journal` Worker
+   ```
+
+   The item is live at `agricultureid.com/journal/<section>/<slug>`. Merging
+   alone publishes nothing: there is no Git integration.
+
+## How /journal reaches this project
+
+agricultureid.com is one Cloudflare zone with two Workers. This project's
+Worker owns the zone routes `agricultureid.com/journal` and
+`agricultureid.com/journal/*` (`wrangler.jsonc`); the knowledge platform's owns
+`agricultureid.com/*`, and the more specific routes win. The Worker serves
+static files only — `dist/`, assembled by `cloudflare/assemble.mjs` from the
+export so that file paths equal public paths — with its own security headers
+(`cloudflare/security-headers.mjs` → `dist/_headers`) and a 308 from any
+trailing-slash URL to its canonical form (`dist/_redirects`).
+`npm run validate:routing` fails if the routes, the headers or that layout
+change.
 
 ## What the format obliges you to supply
 
@@ -101,9 +123,10 @@ That is a property of the path-based architecture. A Journal on
 `journal.agricultureid.com` would have been a different host and would have
 needed its own key file, served by this deployment, with its own rotation.
 
-Submit only canonical `agricultureid.com/journal/...` URLs. Never the
-`*.netlify.app` origin — it is not a host any search engine should be told
-about, and the key would not validate for it in any case.
+Submit only canonical `agricultureid.com/journal/...` URLs. Never an
+infrastructure origin (`*.workers.dev`, or the retired `*.netlify.app`) — it is
+not a host any search engine should be told about, and the key would not
+validate for it in any case.
 
 Submission is a deliberate step taken after a publication is live. Nothing here
 submits automatically, and nothing in this repository rebuilds the main project

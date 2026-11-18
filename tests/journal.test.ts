@@ -143,12 +143,24 @@ describe('journal — parity with the knowledge platform', () => {
     expect(registry).not.toMatch(/^import /m);
   });
 
-  it('declares its own security headers, because the proxy bypasses the platform’s', () => {
+  it('declares its own security headers, because its Worker never runs the platform’s', () => {
     const cfg = readFileSync('next.config.mjs', 'utf8');
-    expect(cfg).toMatch(/async headers\(\)/);
-    expect(cfg).toContain('X-Content-Type-Options');
     expect(cfg).toContain("basePath: '/journal'");
+    expect(cfg).toMatch(/output:\s*'export'/);
     expect(cfg).not.toMatch(/^\s*assetPrefix\s*:/m);
+    const headers = readFileSync('cloudflare/security-headers.mjs', 'utf8');
+    for (const h of [
+      'X-Content-Type-Options',
+      'X-Frame-Options',
+      'Referrer-Policy',
+      'Permissions-Policy',
+      'Strict-Transport-Security',
+    ])
+      expect(headers).toContain(`'${h}'`);
+    // assemble.mjs is what turns that list into the deployed _headers file.
+    expect(readFileSync('cloudflare/assemble.mjs', 'utf8')).toContain(
+      'SECURITY_HEADERS',
+    );
   });
 });
 

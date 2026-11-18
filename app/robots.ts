@@ -1,20 +1,20 @@
 import type { MetadataRoute } from 'next';
 import { journalUrl } from '@/lib/site';
 
+// Generated once at build time: the site is a static export.
+export const dynamic = 'force-static';
+
 /**
  * robots.txt for the Journal deployment.
  *
- * Served at agricultureid.com/journal/robots.txt through the proxy, and at the
- * *.netlify.app root for this project. The main platform's /robots.txt is a
- * different document owned by a different deployment; crawlers read that one,
- * and it names both sitemaps.
+ * Served at agricultureid.com/journal/robots.txt by this project's Worker. The
+ * main platform's /robots.txt is a different document owned by a different
+ * deployment; crawlers read that one, and it names both sitemaps.
  *
- * X-Robots-Tag is deliberately NOT used to protect the infrastructure host in
- * production. A proxy forwards origin response headers to the visitor, so a
- * blanket noindex here would travel through the rewrite and de-index the real
- * agricultureid.com/journal URLs. Non-production contexts are handled by
- * context-scoped headers in netlify.toml, and the infrastructure host is kept
- * out of the index by canonical tags that always name the public origin.
+ * The infrastructure host (*.workers.dev, disabled in production) is kept out
+ * of the index by canonical tags that always name the public origin. The
+ * CONTEXT branch below is a Netlify-era guard for preview builds; nothing sets
+ * CONTEXT on Cloudflare, so production output is the indexable branch.
  */
 export default function robots(): MetadataRoute.Robots {
   const nonProduction =
