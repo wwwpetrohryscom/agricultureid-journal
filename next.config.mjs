@@ -7,7 +7,7 @@
  *
  * The Journal is served at agricultureid.com/journal, but it is a different
  * application from the one serving agricultureid.com. Cloudflare routes only
- * /journal and /journal/* on that host to this project's Worker — so
+ * /journal* on that host to this project's Worker — so
  * every URL this app emits must already begin with /journal, or it falls
  * through to the knowledge platform and 404s. That includes the URLs nobody
  * writes by hand: /_next/static/* chunks, public/ assets, RSC payload requests,
@@ -25,8 +25,8 @@
 
 /*
  * Production is a STATIC EXPORT served by its own Cloudflare Worker,
- * `agricultureid-journal`, which owns the zone routes agricultureid.com/journal
- * and agricultureid.com/journal/* (wrangler.jsonc). The knowledge platform's
+ * `agricultureid-journal`, which owns the zone route agricultureid.com/journal*
+ * (wrangler.jsonc). The knowledge platform's
  * Worker owns everything else on the host. cloudflare/assemble.mjs places the
  * export under journal/ so the asset paths equal the public paths.
  *

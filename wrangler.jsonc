@@ -16,20 +16,20 @@
     // Unknown paths under /journal get dist/journal/404.html with a 404.
     "not_found_handling": "404-page",
   },
-  // These two routes are more specific than the knowledge platform's
+  // `journal*` is more specific than the knowledge platform's
   // agricultureid.com/* route (agricultureid repository), so Cloudflare sends
-  // /journal and everything below it here and nothing else. /journalism is NOT
-  // matched and stays with the platform, as it did on Netlify.
+  // /journal, /journal?…, /journal/… here. A route pattern is matched against
+  // the query string too: an exact `agricultureid.com/journal` route does NOT
+  // match /journal?utm_source=…, which then fell through to the platform's 404
+  // (seen live on 2026-11-18). The trade-off is that other paths beginning
+  // with /journal (e.g. /journalism, which exists on neither site) get this
+  // Worker's 404 page instead of the platform's — still a 404.
   "routes": [
     {
-      "pattern": "agricultureid.com/journal",
-      "zone_name": "agricultureid.com",
-    },
-    {
-      "pattern": "agricultureid.com/journal/*",
+      "pattern": "agricultureid.com/journal*",
       "zone_name": "agricultureid.com",
     },
   ],
-  "workers_dev": true,
+  "workers_dev": false,
   "preview_urls": false,
 }

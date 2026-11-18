@@ -11,8 +11,9 @@ this.
 
 ## How it is served
 
-The `agricultureid.com` Cloudflare zone routes `/journal` and `/journal/*` to
-this project's Worker and everything else to the platform's. This project sets
+The `agricultureid.com` Cloudflare zone routes `/journal*` (the front page,
+with or without a query string, and everything below it) to this project's
+Worker and everything else to the platform's. This project sets
 `basePath: "/journal"` and is a static export; `cloudflare/assemble.mjs` places
 the export under `dist/journal/` so file paths equal public paths, and
 `npx wrangler@4 deploy` publishes `dist/`. The Worker's `*.workers.dev`

@@ -31,9 +31,10 @@ publication or a correction over here.
 ## How /journal reaches this project
 
 agricultureid.com is one Cloudflare zone with two Workers. This project's
-Worker owns the zone routes `agricultureid.com/journal` and
-`agricultureid.com/journal/*` (`wrangler.jsonc`); the knowledge platform's owns
-`agricultureid.com/*`, and the more specific routes win. The Worker serves
+Worker owns the zone route `agricultureid.com/journal*` (`wrangler.jsonc`); the knowledge platform's owns
+`agricultureid.com/*`, and the more specific route wins. An exact
+`agricultureid.com/journal` route would not do: route patterns are matched
+against the query string too, so `/journal?utm_source=…` would miss it. The Worker serves
 static files only — `dist/`, assembled by `cloudflare/assemble.mjs` from the
 export so that file paths equal public paths — with its own security headers
 (`cloudflare/security-headers.mjs` → `dist/_headers`) and a 308 from any

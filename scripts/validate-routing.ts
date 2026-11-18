@@ -53,17 +53,17 @@ const BASE = SITE.basePath;
       fail(`cloudflare/security-headers.mjs does not set ${h}`);
 
   const wrangler = readFileSync(join(process.cwd(), 'wrangler.jsonc'), 'utf8');
-  // Exactly the two Journal routes. A broader pattern (e.g. `journal*`) would
-  // capture platform paths such as /journalism; a narrower one would leave
-  // /journal or its children with the platform, which 404s them.
+  // Exactly one route, `agricultureid.com/journal*`. Route patterns are
+  // matched against the query string as well as the path, so an exact
+  // `agricultureid.com/journal` route misses /journal?utm_source=… and that
+  // request falls through to the platform's 404. `journal*` is the narrowest
+  // pattern that catches /journal with and without a query and everything
+  // below it.
   const routes = [...wrangler.matchAll(/"pattern":\s*"([^"]+)"/g)].map(
     (m) => m[1],
   );
-  const expected = [
-    `agricultureid.com${BASE}`,
-    `agricultureid.com${BASE}/*`,
-  ].sort();
-  if (JSON.stringify([...routes].sort()) !== JSON.stringify(expected))
+  const expected = [`agricultureid.com${BASE}*`];
+  if (JSON.stringify(routes) !== JSON.stringify(expected))
     fail(
       `wrangler.jsonc routes are ${JSON.stringify(routes)}; expected exactly ${JSON.stringify(expected)}`,
     );
@@ -150,6 +150,7 @@ const REQUIRED = [
   `${BASE.slice(1)}/sourcing-policy.html`,
   `${BASE.slice(1)}/corrections.html`,
   `${BASE.slice(1)}/404.html`,
+  '404.html',
 ];
 for (const r of REQUIRED) {
   if (!existsSync(join(DIST, r))) fail(`the build emitted no ${r}`);
