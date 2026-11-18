@@ -5,3 +5,7 @@ out
 *.tsbuildinfo
 .env*.local
 .netlify
+
+# Cloudflare deploy directory (cloudflare/assemble.mjs) and Wrangler state
+dist
+.wrangler

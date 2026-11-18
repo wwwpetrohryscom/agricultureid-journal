@@ -28,42 +28,62 @@ const BASE = SITE.basePath;
     );
   if (!/trailingSlash:\s*false/.test(cfg))
     fail('next.config.mjs does not set trailingSlash: false');
-  // Netlify redirects run BEFORE the Next.js runtime, so the main platform's
-  // headers() never applies to these responses. This project must set its own.
-  if (!/async headers\(\)/.test(cfg))
-    fail(
-      'next.config.mjs declares no headers(); proxied responses would carry no security headers, because the main platform never sees them',
-    );
+  // A static export: nothing renders on request, so nothing can read a
+  // request header or a query string on the server.
+  if (!/output:\s*['"]export['"]/.test(cfg))
+    fail("next.config.mjs does not set output: 'export'");
 }
 
 /* -- the deployment configuration ------------------------------------------ */
 {
-  const toml = readFileSync(join(process.cwd(), 'netlify.toml'), 'utf8');
-  // A production-wide noindex would travel through the proxy and de-index the
-  // real agricultureid.com/journal URLs.
-  const prodNoindex = /\[\[headers\]\][\s\S]*?X-Robots-Tag/.test(toml);
-  if (prodNoindex)
+  // /journal is served by its own Worker, so the knowledge platform's headers
+  // never apply to these responses. This project must set its own.
+  const headers = readFileSync(
+    join(process.cwd(), 'cloudflare', 'security-headers.mjs'),
+    'utf8',
+  );
+  for (const h of [
+    'X-Content-Type-Options',
+    'X-Frame-Options',
+    'Referrer-Policy',
+    'Permissions-Policy',
+    'Strict-Transport-Security',
+  ])
+    if (!headers.includes(`'${h}'`))
+      fail(`cloudflare/security-headers.mjs does not set ${h}`);
+
+  const wrangler = readFileSync(join(process.cwd(), 'wrangler.jsonc'), 'utf8');
+  // Exactly one route, `agricultureid.com/journal*`. Route patterns are
+  // matched against the query string as well as the path, so an exact
+  // `agricultureid.com/journal` route misses /journal?utm_source=… and that
+  // request falls through to the platform's 404. `journal*` is the narrowest
+  // pattern that catches /journal with and without a query and everything
+  // below it.
+  const routes = [...wrangler.matchAll(/"pattern":\s*"([^"]+)"/g)].map(
+    (m) => m[1],
+  );
+  const expected = [`agricultureid.com${BASE}*`];
+  if (JSON.stringify(routes) !== JSON.stringify(expected))
     fail(
-      'netlify.toml sets X-Robots-Tag outside a context block; a proxy forwards it and it would de-index the public URLs',
+      `wrangler.jsonc routes are ${JSON.stringify(routes)}; expected exactly ${JSON.stringify(expected)}`,
     );
-  if (!/context\.deploy-preview\.headers/.test(toml))
-    fail('netlify.toml does not de-index deploy previews');
-  // This project must never proxy anywhere: internal rewrites are limited to
-  // one hop, and the main platform has already spent it.
-  if (/status\s*=\s*200/.test(toml))
-    fail(
-      'netlify.toml contains a 200 rewrite; this project is the proxy TARGET and must not proxy onward — internal rewrites are limited to one hop',
-    );
+  // Assets only. A Worker script here could proxy or rewrite; the Journal
+  // serves its own files and nothing else.
+  if (/^\s*"main"\s*:/m.test(wrangler))
+    fail('wrangler.jsonc declares a Worker script; the Journal is assets-only');
+  if (!/"directory":\s*"\.\/dist"/.test(wrangler))
+    fail('wrangler.jsonc does not serve ./dist (cloudflare/assemble.mjs)');
 }
 
-/* -- the built output ------------------------------------------------------ */
-const OUT = join(process.cwd(), '.next', 'server', 'app');
-if (!existsSync(OUT)) {
-  console.error(
-    'No build output at .next/server/app — run `next build` first.',
-  );
+/* -- the deployed output -------------------------------------------------- */
+// dist/ is what the Worker serves (cloudflare/assemble.mjs): the export under
+// dist/journal/, the front page at dist/journal.html.
+const DIST = join(process.cwd(), 'dist');
+if (!existsSync(DIST)) {
+  console.error('No deploy output at dist/ — run `npm run build` first.');
   process.exit(1);
 }
+const OUT = join(DIST, BASE.slice(1));
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {
@@ -74,8 +94,31 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-const html = walk(OUT);
+const html = walk(DIST);
 if (html.length === 0) fail('the build produced no HTML pages');
+
+// The front page must be a FILE beside the directory, not its index: the asset
+// handler answers a directory index at /journal/ and would redirect the
+// canonical /journal there.
+if (!existsSync(join(DIST, `${BASE.slice(1)}.html`)))
+  fail(
+    `dist has no ${BASE.slice(1)}.html — the front page would not be served at ${BASE}`,
+  );
+if (existsSync(join(OUT, 'index.html')))
+  fail(`dist${BASE}/index.html exists — ${BASE} would redirect to ${BASE}/`);
+
+const redirects = existsSync(join(DIST, '_redirects'))
+  ? readFileSync(join(DIST, '_redirects'), 'utf8')
+  : '';
+if (!/^\/\*\/ \/:splat 308$/m.test(redirects))
+  fail(
+    'dist/_redirects does not 308 trailing-slash URLs to the canonical form',
+  );
+const deployedHeaders = existsSync(join(DIST, '_headers'))
+  ? readFileSync(join(DIST, '_headers'), 'utf8')
+  : '';
+if (!deployedHeaders.includes('Strict-Transport-Security'))
+  fail('dist/_headers carries no security headers');
 
 /**
  * Every internal URL must be prefixed.
@@ -101,15 +144,16 @@ for (const f of html) {
 
 /* -- the routes that must exist -------------------------------------------- */
 const REQUIRED = [
-  'index.html',
-  'search.html',
-  'editorial-policy.html',
-  'sourcing-policy.html',
-  'corrections.html',
-  '_not-found.html',
+  `${BASE.slice(1)}.html`,
+  `${BASE.slice(1)}/search.html`,
+  `${BASE.slice(1)}/editorial-policy.html`,
+  `${BASE.slice(1)}/sourcing-policy.html`,
+  `${BASE.slice(1)}/corrections.html`,
+  `${BASE.slice(1)}/404.html`,
+  '404.html',
 ];
 for (const r of REQUIRED) {
-  if (!html.some((f) => f.endsWith(`/${r}`))) fail(`the build emitted no ${r}`);
+  if (!existsSync(join(DIST, r))) fail(`the build emitted no ${r}`);
 }
 
 const ENDPOINTS = [
@@ -120,17 +164,8 @@ const ENDPOINTS = [
   'latest.json',
   'search-index.json',
 ];
-function walkAny(dir: string, out: string[] = []): string[] {
-  for (const e of readdirSync(dir)) {
-    const p = join(dir, e);
-    if (statSync(p).isDirectory()) walkAny(p, out);
-    else out.push(p);
-  }
-  return out;
-}
-const everything = walkAny(OUT);
 for (const e of ENDPOINTS)
-  if (!everything.some((f) => f.includes(e))) fail(`the build emitted no ${e}`);
+  if (!existsSync(join(OUT, e))) fail(`the build emitted no ${BASE}/${e}`);
 
 console.log('\nAgricultureID Journal — routing validation\n');
 console.log(`  basePath:          ${BASE}`);

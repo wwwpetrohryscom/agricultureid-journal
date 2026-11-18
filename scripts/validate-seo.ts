@@ -2,8 +2,9 @@
  * SEO and identity gate, run against the BUILT output.
  *
  * The single most important thing it prevents: the infrastructure hostname
- * leaking into rendered output. The Journal is deployed on a *.netlify.app
- * host and served to the public at agricultureid.com/journal. If that host ever
+ * leaking into rendered output. The Journal is deployed as a Cloudflare Worker
+ * (formerly a Netlify project) and served to the public at
+ * agricultureid.com/journal. If an infrastructure host ever
  * appears in a canonical tag, an Open Graph URL, a feed, a sitemap or a link,
  * the publication becomes indexable twice under two hostnames, competing with
  * itself, and the split-deployment architecture starts leaking through to
@@ -16,11 +17,10 @@ import { SITE } from '../lib/site';
 const errors: string[] = [];
 const fail = (m: string) => errors.push(m);
 
-const OUT = join(process.cwd(), '.next', 'server', 'app');
+// The deployed tree (cloudflare/assemble.mjs), exactly as the Worker serves it.
+const OUT = join(process.cwd(), 'dist');
 if (!existsSync(OUT)) {
-  console.error(
-    'No build output at .next/server/app — run `next build` first.',
-  );
+  console.error('No deploy output at dist/ — run `npm run build` first.');
   process.exit(1);
 }
 
@@ -39,7 +39,9 @@ const html = files.filter((f) => f.endsWith('.html'));
 if (html.length === 0) fail('the build produced no HTML pages');
 
 /* -- the infrastructure host must not appear anywhere -------------------- */
-const INFRA = /[a-z0-9-]+\.netlify\.app/gi;
+// Both the former (Netlify) and the current (Cloudflare workers.dev)
+// infrastructure hosts.
+const INFRA = /[a-z0-9-]+\.(?:netlify\.app|workers\.dev)/gi;
 for (const f of files) {
   const body = readFileSync(f, 'utf8');
   const hits = body.match(INFRA);
@@ -131,10 +133,8 @@ for (const name of ['rss.xml', 'atom.xml', 'feed.json', 'sitemap.xml']) {
     fail(`${name} was not emitted`);
     continue;
   }
-  // The Next.js runtime writes a route handler's output as `<name>.body` with
-  // a `<name>.meta` sidecar. Requiring the URL in every candidate would demand
-  // it of the headers file too, so the check is that at least one of them —
-  // the one carrying the payload — has it.
+  // At least one emitted file of that name must carry a public URL (the
+  // check tolerates a sidecar file that holds only headers).
   const carrying = candidates.filter((f) =>
     readFileSync(f, 'utf8').includes(`${SITE.origin}${SITE.basePath}`),
   );

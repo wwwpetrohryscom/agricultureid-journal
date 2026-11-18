@@ -3,30 +3,35 @@
 The editorial layer of [AgricultureID](https://agricultureid.com), published at
 **https://agricultureid.com/journal**.
 
-This is a separate application and a separate Netlify project from the
-AgricultureID knowledge platform. They share one public hostname and nothing
-else: publishing an article here does not rebuild the knowledge base, and a
-change to the knowledge base does not rebuild this.
+This is a separate application and a separate Cloudflare Worker
+(`agricultureid-journal`) from the AgricultureID knowledge platform. They share
+one public hostname and nothing else: publishing an article here does not
+rebuild the knowledge base, and a change to the knowledge base does not rebuild
+this.
 
 ## How it is served
 
-`agricultureid.com/journal/*` is forwarded to this project by a proxy rewrite on
-the main project, and this project sets `basePath: "/journal"` so every URL it
-emits already begins there. The `*.netlify.app` hostname this deploys to is
-infrastructure: it appears in exactly one place in the whole architecture — the
-`to =` field of two redirect rules in the main repository — and `validate:seo`
-fails the build if it ever reaches rendered output.
+The `agricultureid.com` Cloudflare zone routes `/journal*` (the front page,
+with or without a query string, and everything below it) to this project's
+Worker and everything else to the platform's. This project sets
+`basePath: "/journal"` and is a static export; `cloudflare/assemble.mjs` places
+the export under `dist/journal/` so file paths equal public paths, and
+`npx wrangler@4 deploy` publishes `dist/`. The Worker's `*.workers.dev`
+hostname is infrastructure, and `validate:seo` fails the build if it (or the
+retired `*.netlify.app` one) ever reaches the output.
 
-The mechanism, the alternatives examined and the evidence are in the main
-repository at `docs/journal-routing-architecture.md`.
+Publishing steps: `docs/journal-publishing-workflow.md`. The architecture
+decision (why a path on the same host) is in the main repository at
+`docs/journal-routing-architecture.md`, and its Cloudflare form in
+`docs/cloudflare-deployment.md` there.
 
 ## Commands
 
 ```
 npm run validate:journal   editorial gate — offline, no build needed
-npm run build              production build (runs the editorial gate first)
-npm run validate:seo       identity and SEO gate, against the built output
-npm run validate:routing   routing gate, against the built output
+npm run build              production build → dist/ (runs the editorial gate first)
+npm run validate:seo       identity and SEO gate, against dist/
+npm run validate:routing   routing and deploy-config gate, against dist/
 npm run validate           all of the above, in order
 ```
 
